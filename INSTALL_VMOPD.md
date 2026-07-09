@@ -1,0 +1,29 @@
+# VMOPD Install Notes
+
+建议 swift 版本：
+
+https://github.com/modelscope/ms-swift/tree/4bd51ab97e348d9f33b3eddb8d14c6834b556b1e
+
+```bash
+conda create -n vmopd python==3.12 -y
+conda activate vmopd
+```
+
+一行 pip，不要分开跑，也不用改其他的，这已经试过了：
+
+```bash
+pip install torch==2.10.0 torchvision torchaudio transformers==5.6.2 vllm==0.19.1 qwen-vl-utils modelscope peft trl==0.29.1 deepspeed==0.18.9 decord accelerate openpyxl xlrd pymupdf tilelang datasets json_repair addict attrdict binpacking cpm_kernels dacite "gradio>=3.40.0,<6.0" importlib_metadata matplotlib nltk oss2 rouge scipy "simplejson>=3.3.0" "sortedcontainers>=1.5.9" tensorboard transformers_stream_generator zstandard
+```
+
+cd 到 ms-swift 目录：
+
+```bash
+pip install -e . --no-deps
+```
+
+ms-swift 训练中间要退出的话，另外开一个终端：
+
+```bash
+pkill -9 -f "swift.cli.rlhf"
+pkill -9 -f "swift.cli.sft"
+```
