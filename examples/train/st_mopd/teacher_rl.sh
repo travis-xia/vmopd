@@ -2,6 +2,9 @@
 set -euo pipefail
 
 export HF_HUB_DISABLE_SSL_VERIFICATION="${HF_HUB_DISABLE_SSL_VERIFICATION:-1}"
+export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
+export HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
 export CURL_CA_BUNDLE="${CURL_CA_BUNDLE:-}"
 export REQUESTS_CA_BUNDLE="${REQUESTS_CA_BUNDLE:-}"
 export VIDEO_MAX_PIXELS="${VIDEO_MAX_PIXELS:-50176}"
@@ -10,10 +13,10 @@ export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:T
 
 DOMAIN="${DOMAIN:-temporal}"
 DATA_DIR="${DATA_DIR:-data/st_mopd}"
-MODEL="${MODEL:-Qwen/Qwen2.5-VL-7B-Instruct}"
+LOCAL_MODEL_DIR="${LOCAL_MODEL_DIR:-/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/Qwen2.5-VL-7B-Instruct}"
+MODEL="${MODEL:-$LOCAL_MODEL_DIR}"
 NPROC_PER_NODE="${NPROC_PER_NODE:-8}"
-TUNER_TYPE="${TUNER_TYPE:-lora}"
-DEEPSPEED="${DEEPSPEED:-zero2}"
+DEEPSPEED="${DEEPSPEED:-zero3}"
 LR="${LR:-1e-6}"
 EPOCHS="${EPOCHS:-1}"
 MAX_LENGTH="${MAX_LENGTH:-4096}"
@@ -46,31 +49,21 @@ case "$DOMAIN" in
     ;;
 esac
 
-tuner_args=(--tuner_type "$TUNER_TYPE")
-if [[ "$TUNER_TYPE" == "lora" ]]; then
-  tuner_args+=(
-    --lora_rank 8
-    --lora_alpha 32
-    --target_modules all-linear
-    --freeze_vit true
-    --freeze_aligner true
-  )
-fi
-
 swift rlhf \
   --rlhf_type grpo \
   --model "$MODEL" \
   --external_plugins st_mopd/reward_plugin.py \
   --reward_funcs "${reward_funcs[@]}" \
-  --reward_weights 0.2 1.0 \
+  --reward_weights 1.0 1.0 \
   --dataset "$DATASET" \
   --load_from_cache_file true \
+  --check_model false \
   --use_vllm true \
   --vllm_mode colocate \
   --vllm_gpu_memory_utilization "$VLLM_GPU_MEMORY_UTILIZATION" \
   --vllm_tensor_parallel_size "$VLLM_TENSOR_PARALLEL_SIZE" \
   --torch_dtype bfloat16 \
-  "${tuner_args[@]}" \
+  --tuner_type full \
   --num_train_epochs "$EPOCHS" \
   --per_device_train_batch_size "$PER_DEVICE_BATCH_SIZE" \
   --per_device_eval_batch_size 1 \

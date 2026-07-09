@@ -51,6 +51,11 @@ bash examples/train/st_mopd/build_dataset.sh
 ## 2. SFT 对照组
 
 默认使用 `mixed_sft.jsonl`，这是独立对照组；后面的 teacher RL 和 Mixed-RL 不从这个 SFT checkpoint 继续。
+默认模型目录是集群本地路径：
+
+```text
+/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/Qwen2.5-VL-7B-Instruct
+```
 
 ```bash
 bash examples/train/st_mopd/sft.sh
@@ -80,7 +85,7 @@ Spatial teacher：
 DOMAIN=spatial bash examples/train/st_mopd/teacher_rl.sh
 ```
 
-这两个脚本默认都从 `MODEL=Qwen/Qwen2.5-VL-7B-Instruct` 启动，不加载 SFT adapter。
+这两个脚本默认都从集群本地 `Qwen2.5-VL-7B-Instruct` 目录启动，不加载 SFT checkpoint。
 
 ## 4. Mixed-RL baseline
 
@@ -89,29 +94,35 @@ bash examples/train/st_mopd/mixed_rl.sh
 ```
 
 Mixed-RL 使用 `mixed_rl.jsonl`，每条样本仍只走自己的 reward：temporal 样本走 temporal IoU，spatial 样本走 trajectory average IoU。
+RL 脚本中格式奖励和答案奖励等权：`--reward_weights 1.0 1.0`。
 
 ## 常用覆盖项
 
 ```bash
 MODEL=/path/to/base_or_instruct_model \
+LOCAL_MODEL_DIR=/path/to/default_base_or_instruct_model \
 NPROC_PER_NODE=8 \
-TUNER_TYPE=lora \
-DEEPSPEED=zero2 \
+DEEPSPEED=zero3 \
 VIDEO_MAX_PIXELS=50176 \
 FPS_MAX_FRAMES=12 \
 bash examples/train/st_mopd/mixed_rl.sh
 ```
 
-如果要全参训练：
+所有训练脚本默认都是全参训练：
 
 ```bash
-TUNER_TYPE=full DEEPSPEED=zero3 bash examples/train/st_mopd/mixed_rl.sh
+DEEPSPEED=zero3 bash examples/train/st_mopd/mixed_rl.sh
 ```
 
 默认脚本已设置：
 
 ```text
 HF_HUB_DISABLE_SSL_VERIFICATION=1
+TRANSFORMERS_OFFLINE=1
+HF_HUB_OFFLINE=1
+HF_DATASETS_OFFLINE=1
 CURL_CA_BUNDLE=
 REQUESTS_CA_BUNDLE=
 ```
+
+训练命令也显式传入 `--check_model false`，避免离线集群上触发 ModelScope 的本地模型最新性检查。
