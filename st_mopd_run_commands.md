@@ -1,0 +1,117 @@
+# ST-MOPD 第一阶段运行命令
+
+当前只准备 SFT 对照、Temporal/Spatial teacher RL、Mixed-RL。MOPD 蒸馏下一步再接。
+
+## 1. 构建数据集
+
+建议在集群上构建，因为 GoT 需要从真实序列目录枚举 8 帧。
+
+```bash
+bash examples/train/st_mopd/build_dataset.sh
+```
+
+输出：
+
+```text
+data/st_mopd/temporal_sft.jsonl
+data/st_mopd/spatial_sft.jsonl
+data/st_mopd/mixed_sft.jsonl
+data/st_mopd/temporal_rl.jsonl
+data/st_mopd/spatial_rl.jsonl
+data/st_mopd/mixed_rl.jsonl
+data/st_mopd/manifest.json
+```
+
+小样本冒烟：
+
+```bash
+OUTPUT_DIR=data/st_mopd_smoke bash examples/train/st_mopd/build_dataset.sh \
+  --max-samples-per-source 4 \
+  --max-spatial-samples 4 \
+  --pretty
+```
+
+如果路径和默认集群路径不同：
+
+```bash
+CHARADES_VIDEO_ROOT=/path/to/Charades_v1_480 \
+ACTIVITYNET_VIDEO_ROOT=/path/to/activitynet/videos \
+GOT_ROOT=/path/to/GoT-10k \
+OUTPUT_DIR=data/st_mopd \
+bash examples/train/st_mopd/build_dataset.sh
+```
+
+如果 ActivityNet annotation 使用集群上的 `val_1.json`：
+
+```bash
+ACTIVITYNET_ANNO_FILE=/path/to/activitynet/captions/val_1.json \
+bash examples/train/st_mopd/build_dataset.sh
+```
+
+## 2. SFT 对照组
+
+默认使用 `mixed_sft.jsonl`，这是独立对照组；后面的 teacher RL 和 Mixed-RL 不从这个 SFT checkpoint 继续。
+
+```bash
+bash examples/train/st_mopd/sft.sh
+```
+
+只做某个域的 SFT：
+
+```bash
+DATASET=data/st_mopd/temporal_sft.jsonl OUTPUT_DIR=output/st_mopd/sft_temporal \
+bash examples/train/st_mopd/sft.sh
+
+DATASET=data/st_mopd/spatial_sft.jsonl OUTPUT_DIR=output/st_mopd/sft_spatial \
+bash examples/train/st_mopd/sft.sh
+```
+
+## 3. 训练单域 RL teachers
+
+Temporal teacher：
+
+```bash
+DOMAIN=temporal bash examples/train/st_mopd/teacher_rl.sh
+```
+
+Spatial teacher：
+
+```bash
+DOMAIN=spatial bash examples/train/st_mopd/teacher_rl.sh
+```
+
+这两个脚本默认都从 `MODEL=Qwen/Qwen2.5-VL-7B-Instruct` 启动，不加载 SFT adapter。
+
+## 4. Mixed-RL baseline
+
+```bash
+bash examples/train/st_mopd/mixed_rl.sh
+```
+
+Mixed-RL 使用 `mixed_rl.jsonl`，每条样本仍只走自己的 reward：temporal 样本走 temporal IoU，spatial 样本走 trajectory average IoU。
+
+## 常用覆盖项
+
+```bash
+MODEL=/path/to/base_or_instruct_model \
+NPROC_PER_NODE=8 \
+TUNER_TYPE=lora \
+DEEPSPEED=zero2 \
+VIDEO_MAX_PIXELS=50176 \
+FPS_MAX_FRAMES=12 \
+bash examples/train/st_mopd/mixed_rl.sh
+```
+
+如果要全参训练：
+
+```bash
+TUNER_TYPE=full DEEPSPEED=zero3 bash examples/train/st_mopd/mixed_rl.sh
+```
+
+默认脚本已设置：
+
+```text
+HF_HUB_DISABLE_SSL_VERIFICATION=1
+CURL_CA_BUNDLE=
+REQUESTS_CA_BUNDLE=
+```
