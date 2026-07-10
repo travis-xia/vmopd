@@ -126,3 +126,49 @@ REQUESTS_CA_BUNDLE=
 ```
 
 训练命令也显式传入 `--check_model false`，避免离线集群上触发 ModelScope 的本地模型最新性检查。
+
+## 5. Evaluation
+
+annotation 里已有 val/test split。默认评测用 Charades/ActivityNet/GoT 的 `val`：
+
+```bash
+bash examples/train/st_mopd/evaluate.sh
+```
+
+脚本会依次生成：
+
+```text
+data/st_mopd_eval/temporal_eval.jsonl
+data/st_mopd_eval/spatial_eval.jsonl
+data/st_mopd_eval/mixed_eval.jsonl
+output/st_mopd/eval/<run>/predictions.jsonl
+output/st_mopd/eval/<run>/metrics.json
+output/st_mopd/eval/<run>/per_sample.jsonl
+```
+
+也可以分步跑：
+
+```bash
+ACTION=build bash examples/train/st_mopd/evaluate.sh
+ACTION=infer MODEL=/path/to/checkpoint bash examples/train/st_mopd/evaluate.sh
+ACTION=score RESULT_PATH=output/st_mopd/eval/<run>/predictions.jsonl bash examples/train/st_mopd/evaluate.sh
+```
+
+如果希望三步写到同一个固定目录，可以设置同一个 `EVAL_RUN_NAME` 或直接设置 `OUTPUT_DIR`。
+
+如果要评 test split：
+
+```bash
+CHARADES_SPLIT=charades_test ACTIVITYNET_SPLIT=test GOT_SPLIT=val \
+bash examples/train/st_mopd/evaluate.sh
+```
+
+打分脚本也可以单独用于已有推理结果：
+
+```bash
+python3 st_mopd/evaluate.py score \
+  --predictions output/st_mopd/eval/<run>/predictions.jsonl \
+  --output output/st_mopd/eval/<run>/metrics.json \
+  --per-sample-output output/st_mopd/eval/<run>/per_sample.jsonl \
+  --pretty
+```
