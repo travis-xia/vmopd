@@ -1,116 +1,59 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export HF_HUB_DISABLE_SSL_VERIFICATION="${HF_HUB_DISABLE_SSL_VERIFICATION:-1}"
-export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
-export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
-export HF_DATASETS_OFFLINE="${HF_DATASETS_OFFLINE:-1}"
-export CURL_CA_BUNDLE="${CURL_CA_BUNDLE:-}"
-export REQUESTS_CA_BUNDLE="${REQUESTS_CA_BUNDLE:-}"
-export VIDEO_MAX_PIXELS="${VIDEO_MAX_PIXELS:-50176}"
-export FPS_MAX_FRAMES="${FPS_MAX_FRAMES:-12}"
-export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+# Edit the values in this block before running the script.
+export HF_HUB_DISABLE_SSL_VERIFICATION=1
+export TRANSFORMERS_OFFLINE=1
+export HF_HUB_OFFLINE=1
+export HF_DATASETS_OFFLINE=1
+export VIDEO_MIN_PIXELS=12544
+export VIDEO_MAX_PIXELS=602112
+export VIDEO_TOTAL_PIXELS=2809856
+export FPS=2.0
+export FPS_MIN_FRAMES=4
+export FPS_MAX_FRAMES=768
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-PYTHON="${PYTHON:-python3}"
-ACTION="${ACTION:-all}"  # build, infer, score, all
-
-ANNOTATION_ROOT="${ANNOTATION_ROOT:-Videochat-R1/annotations}"
-DATA_DIR="${DATA_DIR:-data/st_mopd_eval}"
-EVAL_DATASET="${EVAL_DATASET:-$DATA_DIR/mixed_eval.jsonl}"
-EVAL_RUN_NAME="${EVAL_RUN_NAME:-$(date +%Y%m%d-%H%M%S)}"
-OUTPUT_DIR="${OUTPUT_DIR:-output/st_mopd/eval/$EVAL_RUN_NAME}"
-RESULT_PATH="${RESULT_PATH:-$OUTPUT_DIR/predictions.jsonl}"
-METRICS_PATH="${METRICS_PATH:-$OUTPUT_DIR/metrics.json}"
-PER_SAMPLE_PATH="${PER_SAMPLE_PATH:-$OUTPUT_DIR/per_sample.jsonl}"
-
-CHARADES_VIDEO_ROOT="${CHARADES_VIDEO_ROOT:-/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/VideoAuto-R1-Data/CharadesSTA/Charades_v1_480}"
-ACTIVITYNET_VIDEO_ROOT="${ACTIVITYNET_VIDEO_ROOT:-/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/TVG-R1/video-r1/data/GroundedVLLM/activitynet/videos}"
-GOT_ROOT="${GOT_ROOT:-/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/GoT-10k}"
-CHARADES_SPLIT="${CHARADES_SPLIT:-val}"
-ACTIVITYNET_SPLIT="${ACTIVITYNET_SPLIT:-val}"
-GOT_SPLIT="${GOT_SPLIT:-val}"
-CHARADES_ANNO_FILE="${CHARADES_ANNO_FILE:-}"
-ACTIVITYNET_ANNO_FILE="${ACTIVITYNET_ANNO_FILE:-}"
-GOT_ANNO_FILE="${GOT_ANNO_FILE:-}"
-MAX_TEMPORAL_SAMPLES="${MAX_TEMPORAL_SAMPLES:-}"
-MAX_SPATIAL_SAMPLES="${MAX_SPATIAL_SAMPLES:-}"
-MAX_SAMPLES_PER_SOURCE="${MAX_SAMPLES_PER_SOURCE:-}"
-STRICT_MEDIA="${STRICT_MEDIA:-0}"
-
-LOCAL_MODEL_DIR="${LOCAL_MODEL_DIR:-/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/Qwen2.5-VL-7B-Instruct}"
-MODEL="${MODEL:-$LOCAL_MODEL_DIR}"
-INFER_BACKEND="${INFER_BACKEND:-vllm}"
-MAX_NEW_TOKENS="${MAX_NEW_TOKENS:-512}"
-TEMPERATURE="${TEMPERATURE:-0.0}"
-TOP_P="${TOP_P:-1.0}"
-WRITE_BATCH_SIZE="${WRITE_BATCH_SIZE:-1000}"
-GOLD_JSONL="${GOLD_JSONL:-}"
+ACTION="all"  # build, infer, score, all
+EVAL_RUN_NAME="$(date +%Y%m%d-%H%M%S)"
+OUTPUT_DIR="output/st_mopd/eval/$EVAL_RUN_NAME"
 
 mkdir -p "$OUTPUT_DIR"
 
-build_extra_args=()
-if [[ -n "$CHARADES_ANNO_FILE" ]]; then
-  build_extra_args+=(--charades-anno-file "$CHARADES_ANNO_FILE")
-fi
-if [[ -n "$ACTIVITYNET_ANNO_FILE" ]]; then
-  build_extra_args+=(--activitynet-anno-file "$ACTIVITYNET_ANNO_FILE")
-fi
-if [[ -n "$GOT_ANNO_FILE" ]]; then
-  build_extra_args+=(--got-anno-file "$GOT_ANNO_FILE")
-fi
-if [[ -n "$MAX_TEMPORAL_SAMPLES" ]]; then
-  build_extra_args+=(--max-temporal-samples "$MAX_TEMPORAL_SAMPLES")
-fi
-if [[ -n "$MAX_SPATIAL_SAMPLES" ]]; then
-  build_extra_args+=(--max-spatial-samples "$MAX_SPATIAL_SAMPLES")
-fi
-if [[ -n "$MAX_SAMPLES_PER_SOURCE" ]]; then
-  build_extra_args+=(--max-samples-per-source "$MAX_SAMPLES_PER_SOURCE")
-fi
-if [[ "$STRICT_MEDIA" == "1" ]]; then
-  build_extra_args+=(--strict-media)
-fi
-
-score_extra_args=()
-if [[ -n "$GOLD_JSONL" ]]; then
-  score_extra_args+=(--gold-jsonl "$GOLD_JSONL")
-fi
-
 run_build() {
-  "$PYTHON" st_mopd/evaluate.py build \
-    --annotation-root "$ANNOTATION_ROOT" \
-    --output-dir "$DATA_DIR" \
-    --charades-video-root "$CHARADES_VIDEO_ROOT" \
-    --activitynet-video-root "$ACTIVITYNET_VIDEO_ROOT" \
-    --got-root "$GOT_ROOT" \
-    --charades-split "$CHARADES_SPLIT" \
-    --activitynet-split "$ACTIVITYNET_SPLIT" \
-    --got-split "$GOT_SPLIT" \
-    "${build_extra_args[@]}"
+  python3 st_mopd/evaluate.py build \
+    --annotation-root "Videochat-R1/annotations" \
+    --output-dir "data/st_mopd_eval" \
+    --charades-video-root "/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/VideoAuto-R1-Data/CharadesSTA/Charades_v1_480" \
+    --activitynet-video-root "/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/TVG-R1/video-r1/data/GroundedVLLM/activitynet/videos" \
+    --got-root "/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/GoT-10k" \
+    --charades-split "val" \
+    --activitynet-split "val" \
+    --got-split "val"
 }
 
 run_infer() {
   swift infer \
-    --model "$MODEL" \
-    --val_dataset "$EVAL_DATASET" \
-    --result_path "$RESULT_PATH" \
-    --infer_backend "$INFER_BACKEND" \
+    --model "/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/Qwen2.5-VL-7B-Instruct" \
+    --max_pixels 12845056 \
+    --val_dataset "data/st_mopd_eval/mixed_eval.jsonl" \
+    --result_path "$OUTPUT_DIR/predictions.jsonl" \
+    --infer_backend "vllm" \
     --check_model false \
     --torch_dtype bfloat16 \
-    --max_new_tokens "$MAX_NEW_TOKENS" \
-    --temperature "$TEMPERATURE" \
-    --top_p "$TOP_P" \
+    --max_new_tokens 512 \
+    --temperature "0.0" \
+    --top_p "1.0" \
     --stream false \
-    --write_batch_size "$WRITE_BATCH_SIZE"
+    --write_batch_size 1000
 }
 
 run_score() {
-  "$PYTHON" st_mopd/evaluate.py score \
-    --predictions "$RESULT_PATH" \
-    --output "$METRICS_PATH" \
-    --per-sample-output "$PER_SAMPLE_PATH" \
-    --pretty \
-    "${score_extra_args[@]}"
+  python3 st_mopd/evaluate.py score \
+    --predictions "$OUTPUT_DIR/predictions.jsonl" \
+    --output "$OUTPUT_DIR/metrics.json" \
+    --per-sample-output "$OUTPUT_DIR/per_sample.jsonl" \
+    --pretty
 }
 
 case "$ACTION" in

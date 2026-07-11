@@ -96,16 +96,18 @@ bash examples/train/st_mopd/mixed_rl.sh
 Mixed-RL 使用 `mixed_rl.jsonl`，每条样本仍只走自己的 reward：temporal 样本走 temporal IoU，spatial 样本走 trajectory average IoU。
 RL 脚本中格式奖励和答案奖励等权：`--reward_weights 1.0 1.0`。
 
-## 常用覆盖项
+## R1 视频输入上下限
 
-```bash
-MODEL=/path/to/base_or_instruct_model \
-LOCAL_MODEL_DIR=/path/to/default_base_or_instruct_model \
-NPROC_PER_NODE=8 \
-DEEPSPEED=zero3 \
-VIDEO_MAX_PIXELS=50176 \
-FPS_MAX_FRAMES=12 \
-bash examples/train/st_mopd/mixed_rl.sh
+这些值已经直接写在 `examples/train/st_mopd/*.sh` 里，改实验配置时直接改脚本。
+
+```text
+VIDEO_MIN_PIXELS=12544          # 16 * 28 * 28
+VIDEO_MAX_PIXELS=602112         # 768 * 28 * 28
+VIDEO_TOTAL_PIXELS=2809856      # 3584 * 28 * 28
+FPS=2.0
+FPS_MIN_FRAMES=4
+FPS_MAX_FRAMES=768
+--max_pixels 12845056           # 16384 * 28 * 28
 ```
 
 所有训练脚本默认都是全参训练：
