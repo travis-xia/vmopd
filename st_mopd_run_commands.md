@@ -190,3 +190,6 @@ python3 st_mopd/evaluate.py score \
 评估推理命令使用 `--remove_unused_columns false`，会保留 `sample_id`、
 `data_type`、`gt_start`、`gt_end`、`gt_boxes` 等原始字段。对于旧版推理结果，
 如果这些字段已被 Swift 删除但预测条数与验证集一致，评分器会按验证集原始顺序回填标注。
+
+Base/SFT 评估显式使用 `You are a helpful assistant.` 作为 system prompt，
+与 Swift 在 SFT 训练时自动补入的默认 system 保持一致；RL 评估使用单独的 RL system prompt。

@@ -21,6 +21,7 @@ EVAL_MODEL_STAGE="base"  # base, sft, rl
 EVAL_RUN_NAME="$(date +%Y%m%d-%H%M%S)"
 OUTPUT_DIR="output/st_mopd/eval/$EVAL_RUN_NAME"
 MODEL_PATH="/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/Qwen2.5-VL-7B-Instruct"
+BASE_SYSTEM_PROMPT="You are a helpful assistant."
 RL_SYSTEM_PROMPT="A conversation between user and assistant. The user provides a visual input and asks a question. The assistant MUST first think about the reasoning process in the mind and then provide the answer. The reasoning process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively."
 
 mkdir -p "$OUTPUT_DIR"
@@ -41,6 +42,7 @@ run_infer() {
   local system_args=()
   case "$EVAL_MODEL_STAGE" in
     base|original|pretrain|sft)
+      system_args=(--system "$BASE_SYSTEM_PROMPT")
       ;;
     rl)
       system_args=(--system "$RL_SYSTEM_PROMPT")
