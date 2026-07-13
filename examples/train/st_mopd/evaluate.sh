@@ -55,6 +55,7 @@ run_infer() {
     --model "$MODEL_PATH" \
     --max_pixels 12845056 \
     --val_dataset "data/st_mopd_eval/mixed_eval.jsonl" \
+    --remove_unused_columns false \
     --result_path "$OUTPUT_DIR/predictions.jsonl" \
     --infer_backend "vllm" \
     --vllm_tensor_parallel_size 1 \
@@ -70,6 +71,7 @@ run_infer() {
 run_score() {
   python3 st_mopd/evaluate.py score \
     --predictions "$OUTPUT_DIR/predictions.jsonl" \
+    --gold-jsonl "data/st_mopd_eval/mixed_eval.jsonl" \
     --output "$OUTPUT_DIR/metrics.json" \
     --per-sample-output "$OUTPUT_DIR/per_sample.jsonl" \
     --pretty

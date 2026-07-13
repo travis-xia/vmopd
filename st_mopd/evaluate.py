@@ -59,6 +59,7 @@ except ModuleNotFoundError:
 
 DEFAULT_THRESHOLDS = (0.3, 0.5, 0.7)
 RESPONSE_FIELDS = ("response", "completion", "prediction", "pred", "output", "generated_text")
+REFERENCE_FIELDS = ("labels", "solution", "reference", "ground_truth")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -233,12 +234,19 @@ def merge_gold(rows: List[Dict[str, Any]], gold_path: Optional[Path], id_field: 
         return rows
     gold_rows = read_jsonl(gold_path)
     gold_by_id = {row.get(id_field): row for row in gold_rows if row.get(id_field) is not None}
+    # Older swift infer outputs may omit IDs after preprocessing removes metadata.
+    positional_fallback = len(rows) == len(gold_rows) and all(not row.get(id_field) for row in rows)
     merged = []
-    for row in rows:
+    for index, row in enumerate(rows):
         sample_id = row.get(id_field)
-        gold = gold_by_id.get(sample_id, {})
+        gold = gold_by_id.get(sample_id)
+        if gold is None and positional_fallback:
+            gold = gold_rows[index]
+        if gold is None:
+            gold = {}
         merged_row = dict(gold)
-        merged_row.update(row)
+        # Do not let metadata stripped by preprocessing (`None`) erase gold fields.
+        merged_row.update({key: value for key, value in row.items() if value is not None})
         merged.append(merged_row)
     return merged
 
@@ -280,6 +288,14 @@ def extract_response(row: Dict[str, Any], response_field: Optional[str]) -> str:
     return ""
 
 
+def extract_reference(row: Dict[str, Any]) -> str:
+    for field in REFERENCE_FIELDS:
+        value = row.get(field)
+        if value is not None:
+            return str(value)
+    return ""
+
+
 def infer_data_type(row: Dict[str, Any]) -> Optional[str]:
     data_type = row.get("data_type")
     if data_type in {"temporal", "spatial"}:
@@ -288,6 +304,12 @@ def infer_data_type(row: Dict[str, Any]) -> Optional[str]:
         return "temporal"
     if row.get("gt_boxes") is not None or row.get("gt") is not None:
         return "spatial"
+    # Swift infer keeps the original assistant target in `labels`.
+    reference = extract_reference(row)
+    if parse_spatial_boxes(reference):
+        return "spatial"
+    if parse_temporal_segment(reference) is not None:
+        return "temporal"
     return None
 
 
@@ -316,9 +338,12 @@ def mean(values: Iterable[float]) -> float:
 
 
 def score_temporal(row: Dict[str, Any], response: str) -> Dict[str, Any]:
-    if row.get("gt_start") is None or row.get("gt_end") is None:
-        return {"skip_reason": "missing_temporal_gt"}
-    gt = (float(row["gt_start"]), float(row["gt_end"]))
+    if row.get("gt_start") is not None and row.get("gt_end") is not None:
+        gt = (float(row["gt_start"]), float(row["gt_end"]))
+    else:
+        gt = parse_temporal_segment(extract_reference(row))
+        if gt is None:
+            return {"skip_reason": "missing_temporal_gt"}
     pred = parse_temporal_segment(response)
     iou = 0.0 if pred is None else temporal_iou(pred, gt)
     return {
@@ -344,6 +369,8 @@ def per_frame_ious(pred_boxes: Sequence[Sequence[float]], gt_boxes: Sequence[Seq
 
 def score_spatial(row: Dict[str, Any], response: str) -> Dict[str, Any]:
     gt_boxes = parse_gt_boxes(row)
+    if not gt_boxes:
+        gt_boxes = parse_spatial_boxes(extract_reference(row))
     if not gt_boxes:
         return {"skip_reason": "missing_spatial_gt"}
     pred_boxes = parse_spatial_boxes(response)

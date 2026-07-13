@@ -61,11 +61,7 @@ bash examples/train/st_mopd/build_dataset.sh
 bash examples/train/st_mopd/sft.sh
 ```
 
-SFT 默认 `--max_length 8192`。这次报错来自视频样本 token 后超过原来的 4096，Swift 在 lazy tokenize 时连续重采样失败后退出。若 8192 仍报同类错误，可以先把 `examples/train/st_mopd/sft.sh` 里的长度继续增大：
-
-```bash
-  --max_length 12288 \
-```
+SFT 默认 `--max_length 16384`。
 
 如果增大长度后显存不够，再降低脚本里的视频 token 预算：
 
@@ -185,7 +181,12 @@ bash examples/train/st_mopd/evaluate.sh
 ```bash
 python3 st_mopd/evaluate.py score \
   --predictions output/st_mopd/eval/<run>/predictions.jsonl \
+  --gold-jsonl data/st_mopd_eval/mixed_eval.jsonl \
   --output output/st_mopd/eval/<run>/metrics.json \
   --per-sample-output output/st_mopd/eval/<run>/per_sample.jsonl \
   --pretty
 ```
+
+评估推理命令使用 `--remove_unused_columns false`，会保留 `sample_id`、
+`data_type`、`gt_start`、`gt_end`、`gt_boxes` 等原始字段。对于旧版推理结果，
+如果这些字段已被 Swift 删除但预测条数与验证集一致，评分器会按验证集原始顺序回填标注。
