@@ -387,6 +387,11 @@ class VllmEngine(InferEngine):
                 llm_inputs['multi_modal_data'] = mm_data
             mm_processor_kwargs = inputs.get('mm_processor_kwargs')
             if mm_processor_kwargs:
+                mm_processor_kwargs = deepcopy(mm_processor_kwargs)
+                # Newer Qwen2.5-VL processors validate `fps` as a scalar, while
+                # the template stores one fps value per video for HF encoding.
+                if isinstance(mm_processor_kwargs.get('fps'), list) and len(mm_processor_kwargs['fps']) == 1:
+                    mm_processor_kwargs['fps'] = mm_processor_kwargs['fps'][0]
                 llm_inputs['mm_processor_kwargs'] = mm_processor_kwargs
 
             has_task_arg = 'task' in inspect.signature(PoolingParams).parameters

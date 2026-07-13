@@ -9,7 +9,7 @@ from packaging import version
 from PIL import Image
 from torch import nn
 from transformers.integrations import is_deepspeed_zero3_enabled
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from swift.utils import get_env_args, get_packed_seq_params, is_deepspeed_enabled, to_float_dtype
 from ..base import Template
@@ -21,6 +21,53 @@ from ..utils import Context, Word, findall
 from ..vision_utils import load_audio, load_batch, load_video_ovis2, load_video_ovis2_5
 from .llama import Llama3TemplateMeta
 from .utils import DEFAULT_SYSTEM, ChatmlTemplateMeta
+
+
+def _infer_frame_size(frame: Any) -> Optional[Tuple[int, int]]:
+    if isinstance(frame, Image.Image):
+        width, height = frame.size
+        return height, width
+    if isinstance(frame, str):
+        if frame.startswith(('http://', 'https://', 'data:image')):
+            return None
+        image_path = frame[7:] if frame.startswith('file://') else frame
+        try:
+            with Image.open(image_path) as image:
+                width, height = image.size
+            return height, width
+        except Exception:
+            return None
+    shape = getattr(frame, 'shape', None)
+    if shape is None or len(shape) < 3:
+        return None
+    if shape[0] in {1, 3, 4}:  # CHW
+        return int(shape[-2]), int(shape[-1])
+    if shape[-1] in {1, 3, 4}:  # HWC
+        return int(shape[-3]), int(shape[-2])
+    return None
+
+
+def _set_video_list_resize(
+        video: Any,
+        video_inputs: Dict[str, Any],
+        fetch_image_func: Optional[Any] = None,
+        image_patch_size: int = 14) -> None:
+    if (not isinstance(video, (list, tuple)) or not video or 'resized_height' in video_inputs
+            or 'resized_width' in video_inputs):
+        return
+    for frame in video:
+        if fetch_image_func is not None:
+            try:
+                image = fetch_image_func({'image': frame}, image_patch_size=image_patch_size)
+                width, height = image.size
+                video_inputs['resized_height'], video_inputs['resized_width'] = height, width
+                return
+            except Exception:
+                pass
+        frame_size = _infer_frame_size(frame)
+        if frame_size is not None:
+            video_inputs['resized_height'], video_inputs['resized_width'] = frame_size
+            return
 
 
 @dataclass
@@ -326,9 +373,10 @@ class Qwen2VLTemplate(Template):
                 kwargs['return_video_metadata'] = True
             video = inputs.videos[index]
             video_inputs = {'video': video}
-            if isinstance(video, list):  # image list
+            if isinstance(video, (list, tuple)):  # image list
                 from qwen_vl_utils import vision_process
                 video_inputs['sample_fps'] = vision_process.FPS
+                _set_video_list_resize(video, video_inputs, fetch_image, kwargs.get('image_patch_size', 14))
             video, video_kwargs = fetch_video(video_inputs, return_video_sample_fps=True, **kwargs)
             tokens = ['<|vision_start|><|video_pad|><|vision_end|>']
             if self.version == 'v2_5':

@@ -11,7 +11,7 @@ export VIDEO_MAX_PIXELS=602112
 export VIDEO_TOTAL_PIXELS=2809856
 export FPS=2.0
 export FPS_MIN_FRAMES=4
-export FPS_MAX_FRAMES=768
+export FPS_MAX_FRAMES=64
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export NPROC_PER_NODE=8
 
@@ -31,13 +31,15 @@ swift rlhf \
   --vllm_tensor_parallel_size 1 \
   --torch_dtype bfloat16 \
   --tuner_type full \
+  --freeze_vit false \
+  --freeze_aligner false \
   --num_train_epochs 1 \
   --per_device_train_batch_size 1 \
   --per_device_eval_batch_size 1 \
   --gradient_accumulation_steps 1 \
   --learning_rate "1e-6" \
   --lr_scheduler_type cosine \
-  --max_length 4096 \
+  --max_length 16384 \
   --max_completion_length 512 \
   --num_generations 8 \
   --temperature 1.0 \

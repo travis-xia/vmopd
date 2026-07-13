@@ -61,14 +61,27 @@ bash examples/train/st_mopd/build_dataset.sh
 bash examples/train/st_mopd/sft.sh
 ```
 
+SFT 默认 `--max_length 8192`。这次报错来自视频样本 token 后超过原来的 4096，Swift 在 lazy tokenize 时连续重采样失败后退出。若 8192 仍报同类错误，可以先把 `examples/train/st_mopd/sft.sh` 里的长度继续增大：
+
+```bash
+  --max_length 12288 \
+```
+
+如果增大长度后显存不够，再降低脚本里的视频 token 预算：
+
+```bash
+export VIDEO_TOTAL_PIXELS=1960000
+export FPS_MAX_FRAMES=64
+```
+
 只做某个域的 SFT：
 
 ```bash
-DATASET=data/st_mopd/temporal_sft.jsonl OUTPUT_DIR=output/st_mopd/sft_temporal \
-bash examples/train/st_mopd/sft.sh
+  --dataset "data/st_mopd/temporal_sft.jsonl" \
+  --output_dir "output/st_mopd/sft_temporal" \
 
-DATASET=data/st_mopd/spatial_sft.jsonl OUTPUT_DIR=output/st_mopd/sft_spatial \
-bash examples/train/st_mopd/sft.sh
+  --dataset "data/st_mopd/spatial_sft.jsonl" \
+  --output_dir "output/st_mopd/sft_spatial" \
 ```
 
 ## 3. 训练单域 RL teachers
@@ -106,19 +119,21 @@ VIDEO_MAX_PIXELS=602112         # 768 * 28 * 28
 VIDEO_TOTAL_PIXELS=2809856      # 3584 * 28 * 28
 FPS=2.0
 FPS_MIN_FRAMES=4
-FPS_MAX_FRAMES=768
+FPS_MAX_FRAMES=64
 --max_pixels 12845056           # 16384 * 28 * 28
+--max_length 8192
 ```
 
-所有训练脚本默认都是全参训练：
+所有训练脚本默认都是全量 tune，包括 LLM、ViT 和 aligner：
 
-```bash
-DEEPSPEED=zero3 bash examples/train/st_mopd/mixed_rl.sh
-```
+需要调整 DeepSpeed 时直接改脚本里的 `--deepspeed`。
 
 默认脚本已设置：
 
 ```text
+--tuner_type full
+--freeze_vit false
+--freeze_aligner false
 HF_HUB_DISABLE_SSL_VERIFICATION=1
 TRANSFORMERS_OFFLINE=1
 HF_HUB_OFFLINE=1
