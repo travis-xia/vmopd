@@ -35,7 +35,7 @@ swift sft \
   --gradient_accumulation_steps 2 \
   --eval_steps 200 \
   --save_steps 200 \
-  --save_total_limit 3 \
+  --save_total_limit 5 \
   --logging_steps 5 \
   --max_length 16384 \
   --truncation_strategy delete \

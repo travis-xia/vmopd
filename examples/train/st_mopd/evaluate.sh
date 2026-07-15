@@ -17,10 +17,21 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 export NPROC_PER_NODE=8
 
 ACTION="all"  # build, infer, score, all
+
+
+# set this manually before running
 EVAL_MODEL_STAGE="base"  # base, sft, rl
-EVAL_RUN_NAME="$(date +%Y%m%d-%H%M%S)"
-OUTPUT_DIR="output/st_mopd/eval/$EVAL_RUN_NAME"
 MODEL_PATH="/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/hf_download/Qwen2.5-VL-7B-Instruct"
+MODEL_NAME="Qwen2.5-VL-7B-Instruct"  
+
+
+MODEL_PATH="/inspire/qb-ilm/project/traffic-congestion-management/xiacheng-240108120111/vmopd/output/st_mopd/sft_mixed/v0-20260713-021929/checkpoint-3661"
+MODEL_NAME="sft_mixed_ckpt3661"  
+EVAL_MODEL_STAGE="sft"
+
+
+EVAL_RUN_NAME="$(date +%Y%m%d-%H%M%S)"
+OUTPUT_DIR="output/st_mopd/eval/${MODEL_NAME}/${EVAL_MODEL_STAGE}_${EVAL_RUN_NAME}"
 BASE_SYSTEM_PROMPT="You are a helpful assistant."
 RL_SYSTEM_PROMPT="A conversation between user and assistant. The user provides a visual input and asks a question. The assistant MUST first think about the reasoning process in the mind and then provide the answer. The reasoning process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively."
 

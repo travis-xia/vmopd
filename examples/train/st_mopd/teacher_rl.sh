@@ -56,20 +56,20 @@ swift rlhf \
   --per_device_train_batch_size 1 \
   --per_device_eval_batch_size 1 \
   --gradient_accumulation_steps 1 \
-  --learning_rate "1e-6" \
+  --learning_rate "1e-5" \
   --lr_scheduler_type cosine \
   --max_length 16384 \
-  --max_completion_length 512 \
+  --max_completion_length 768 \
   --num_generations 8 \
   --temperature 1.0 \
   --top_p 0.85 \
   --save_steps 200 \
-  --save_total_limit 3 \
+  --save_total_limit 5 \
   --logging_steps 1 \
   --warmup_ratio 0.05 \
-  --dataloader_num_workers 4 \
+  --dataloader_num_workers 8 \
   --output_dir "$output_dir" \
-  --deepspeed "zero3" \
+  --deepspeed "zero2" \
   --beta "0.001" \
   --log_completions true \
   --report_to tensorboard
